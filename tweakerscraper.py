@@ -1,26 +1,82 @@
 import time
 import sys
+import re
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, SoupStrainer
+from pprint import pprint
 import requests
+import lxml
+
+START_PAGE = "https://tweakers.net/aanbod/zoeken/"
+
+A_TAGS = SoupStrainer('a')
+
+
+def parse_float(price: str) -> float:
+    return float(re.sub("€|\s|-", '', price).replace(",", "."))
 
 
 def main(arg):
+    print("Start scraping...")
     start_time = time.time()
-
-    cookie = "__Secure-TnetID=0S9lFR1e0AMIUz9mUvsx9Hk0LHM53yVW; lastConsentChange=1564229933834; " \
-             "wt3_eid=%3B318816705845986%7C2154996479730406671%232156422993166350719; " \
-             "_vwo_uuid_v2=DF22274025AB9148EC8EE889EE068AAEC|37c2b53e0f8cfd361aca8a66ffd96702; " \
-             "_ga=GA1.2.2096494696.1549964798; wt_rla=318816705845986%2C1%2C1564229931177; uid=1117597; " \
-             "_vis_opt_s=2%7C; _vis_opt_exp_114_exclude=1; LastVisit=1562253620; SessionTime=1560068907; " \
-             "tc=1564229927%2C1563136343; " \
-             "__gads=ID=e198f3129a5c2ac3:T=1562253622:S=ALNI_MZmcw3qWXWggzyBkrdYE9wodlUP1w; pl=3090%3A0; " \
-             "_sotmpid=0:jy2vxfw3:1x8ZAc_Osx18n9ie0nYB6T8maQwYxfzr; _vis_opt_exp_130_exclude=1; wt_cdbeid=1; " \
-             "wt3_sid=%3B318816705845986; _gid=GA1.2.80576767.1564229933 "
-
     count = 0
+    products = []
+    old_links_list = []
+
+    headers = {
+        "Accept": "text/html, application/xhtml+xml, application/xml; q=0.9, */*; q=0.8",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Language": "en-NL",
+        "Cache-Control": "max-age=0",
+        "Cookie": arg,
+        "Host": "tweakers.net",
+        "Referer": "https://tweakers.net/",
+        "Upgrade-Insecure-Requests": "1",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/64.0.3282.140 Safari/537.36 Edge/18.17763 "
+    }
+
+    response = requests.get(START_PAGE, headers=headers)
+    soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
+
+    product_links = [link.get("href") for link in soup.find_all(class_=["thumb small", "thumb small empty"])]
+
+    for product_link in product_links[0:4]:
+        product_info = {"link": product_link}
+
+        if product_link not in old_links_list:
+            response = requests.get(product_link, headers=headers)
+            soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
+            product_page = soup.find(class_=["thumb normal", "thumb normal empty"])
+
+            if product_page:
+                product_page_link = product_page.get("href")
+                response = requests.get(product_page_link, headers=headers)
+                soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
+
+                pricewatch_price = soup.find(string=re.compile("^€ ([0-9])+,(-|[0-9]+)$"))
+
+                product_info["price_new"] = parse_float(pricewatch_price.string) if pricewatch_price else None
+
+                other_sellers_page = soup.find(href=re.compile("https://tweakers.net/pricewatch/.*(aanbod).*")).get(
+                    "href")
+
+                response = requests.get(other_sellers_page, headers=headers)
+                soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
+                other_prices = soup.find_all(string=re.compile("€ ([0-9\.])+,(-|[0-9]+)"))
+
+                product_info["price_old"] = [parse_float(price.string)
+                                             for price in other_prices
+                                             if parse_float(price.string) != product_info["price_new"]]
+
+                products.append(product_info)
+
+        count += 1
+
     duration = time.time() - start_time
     print(f"Scraped {count} in {duration} seconds")
+
+    pprint(products)
 
 
 if __name__ == "__main__":

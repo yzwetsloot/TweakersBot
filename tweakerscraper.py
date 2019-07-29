@@ -67,7 +67,7 @@ def main():
                         response = requests.get(product_page_link, headers=headers)
                         soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
 
-                        pricewatch_price = soup.find(string=re.compile("^€ ([0-9])+,(-|[0-9]+)$"))
+                        pricewatch_price = soup.find(string=re.compile("^€ ([0-9\.])+,(-|[0-9]+)$"))
 
                         product_info["price_new"] = parse_float(pricewatch_price.string) if pricewatch_price else None
 

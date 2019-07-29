@@ -58,7 +58,7 @@ def send_error_notification(err: str) -> None:
     send_email(text, html, "Program error occurred")
 
 
-def send_email(text: str, html: str, subject: str = "Significant price difference") -> None:
+def send_email(text: str, html: str, subject: str) -> None:
     print("Sending mail...")
 
     message = MIMEMultipart("Alternative")

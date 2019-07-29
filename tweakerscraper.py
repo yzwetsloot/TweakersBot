@@ -1,11 +1,13 @@
 import time
-import sys
 import re
+import random
 
 from bs4 import BeautifulSoup, SoupStrainer
-from pprint import pprint
 import requests
 import lxml
+
+from pricedifference import calculate_price_difference
+from notificationemail import send_error_notification, send_price_notification
 
 START_PAGE = "https://tweakers.net/aanbod/zoeken/"
 
@@ -13,22 +15,23 @@ A_TAGS = SoupStrainer('a')
 
 
 def parse_float(price: str) -> float:
-    return float(re.sub("€|\s|-", '', price).replace(",", "."))
+    return float(re.sub("€|\s|-|\.", '', price).replace(",", "."))
 
 
-def main(arg):
-    print("Start scraping...")
-    start_time = time.time()
-    count = 0
-    products = []
+def main():
     old_links_list = []
+
+    with open("cookieconfig.txt") as fh:
+        cookies = [line.strip() for line in fh]
+
+    index = 0
 
     headers = {
         "Accept": "text/html, application/xhtml+xml, application/xml; q=0.9, */*; q=0.8",
         "Accept-Encoding": "gzip, deflate, br",
         "Accept-Language": "en-NL",
         "Cache-Control": "max-age=0",
-        "Cookie": arg,
+        "Cookie": cookies[0],
         "Host": "tweakers.net",
         "Referer": "https://tweakers.net/",
         "Upgrade-Insecure-Requests": "1",
@@ -36,48 +39,74 @@ def main(arg):
                       "Chrome/64.0.3282.140 Safari/537.36 Edge/18.17763 "
     }
 
-    response = requests.get(START_PAGE, headers=headers)
-    soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
+    while True:
+        print("Start scraping...")
+        start_time = time.time()
+        count = 0
+        products = []
 
-    product_links = [link.get("href") for link in soup.find_all(class_=["thumb small", "thumb small empty"])]
+        response = requests.get(START_PAGE, headers=headers)
+        soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
 
-    for product_link in product_links[0:4]:
-        product_info = {"link": product_link}
+        product_links = [link.get("href") for link in soup.find_all(class_=["thumb small", "thumb small empty"])]
 
-        if product_link not in old_links_list:
-            response = requests.get(product_link, headers=headers)
-            soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
-            product_page = soup.find(class_=["thumb normal", "thumb normal empty"])
+        for product_link in product_links[0:4]:
+            product_info = {"link": product_link}
 
-            if product_page:
-                product_page_link = product_page.get("href")
-                response = requests.get(product_page_link, headers=headers)
+            if product_link not in old_links_list:
+                response = requests.get(product_link, headers=headers)
                 soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
+                product_page = soup.find(class_=["thumb normal", "thumb normal empty"])
 
-                pricewatch_price = soup.find(string=re.compile("^€ ([0-9])+,(-|[0-9]+)$"))
+                if product_page:
+                    product_page_link = product_page.get("href")
 
-                product_info["price_new"] = parse_float(pricewatch_price.string) if pricewatch_price else None
+                    while True:
+                        response = requests.get(product_page_link, headers=headers)
+                        soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
 
-                other_sellers_page = soup.find(href=re.compile("https://tweakers.net/pricewatch/.*(aanbod).*")).get(
-                    "href")
+                        pricewatch_price = soup.find(string=re.compile("^€ ([0-9])+,(-|[0-9]+)$"))
 
-                response = requests.get(other_sellers_page, headers=headers)
-                soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
-                other_prices = soup.find_all(string=re.compile("€ ([0-9\.])+,(-|[0-9]+)"))
+                        product_info["price_new"] = parse_float(pricewatch_price.string) if pricewatch_price else None
 
-                product_info["price_old"] = [parse_float(price.string)
-                                             for price in other_prices
-                                             if parse_float(price.string) != product_info["price_new"]]
+                        try:
+                            other_sellers_page = soup.find(
+                                href=re.compile("https://tweakers.net/pricewatch/.*(aanbod).*")).get(
+                                "href")
+                        except Exception as err:
+                            send_error_notification(str(err))
+                            index += 1
+                            headers["Cookie"] = cookies[index % 3]
+                            continue
 
-                products.append(product_info)
+                        break
 
-        count += 1
+                    response = requests.get(other_sellers_page, headers=headers)
+                    soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
+                    other_prices = soup.find_all(string=re.compile("€ ([0-9\.])+,(-|[0-9]+)"))
 
-    duration = time.time() - start_time
-    print(f"Scraped {count} in {duration} seconds")
+                    product_info["price_old"] = [parse_float(price.string)
+                                                 for price in other_prices
+                                                 if parse_float(price.string) != product_info["price_new"]]
 
-    pprint(products)
+                    products.append(product_info)
+
+                    count += 1
+
+        duration = time.time() - start_time
+        print(f"Scraped {count} in {duration} seconds")
+
+        if count > 0:
+            for i, j in enumerate(calculate_price_difference(products)):
+                if j:
+                    send_price_notification(products[i])
+
+        old_links_list = product_links[0:4]
+
+        timeout = random.randrange(85, 145)
+        print(f"Start sleeping for {timeout} seconds...")
+        time.sleep(timeout)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main()

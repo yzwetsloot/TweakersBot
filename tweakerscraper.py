@@ -1,6 +1,7 @@
 import time
 import re
 import random
+import sys
 
 from bs4 import BeautifulSoup, SoupStrainer
 import requests
@@ -21,7 +22,7 @@ def parse_float(price: str) -> float:
 def main():
     old_links_list = []
 
-    with open("cookieconfig.txt") as fh:
+    with open("config/cookieconfig.txt") as fh:
         cookies = [line.strip() for line in fh]
 
     index = 0
@@ -42,8 +43,9 @@ def main():
     while True:
         print("Start scraping...")
         start_time = time.time()
-        count = 0
+        scrape_count = 0
         products = []
+        error_count = 0
 
         response = requests.get(START_PAGE, headers=headers)
         soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
@@ -74,9 +76,17 @@ def main():
                                 href=re.compile("https://tweakers.net/pricewatch/.*(aanbod).*")).get(
                                 "href")
                         except Exception as err:
+                            if error_count > 6:
+                                send_error_notification("Stopped program")
+                                sys.exit()
+
                             send_error_notification(str(err))
+
                             index += 1
                             headers["Cookie"] = cookies[index % 3]
+
+                            error_count += 1
+
                             continue
 
                         break
@@ -91,12 +101,12 @@ def main():
 
                     products.append(product_info)
 
-                    count += 1
+                    scrape_count += 1
 
         duration = time.time() - start_time
-        print(f"Scraped {count} in {duration} seconds")
+        print(f"Scraped {scrape_count} in {duration} seconds")
 
-        if count > 0:
+        if scrape_count > 0:
             for i, j in enumerate(calculate_price_difference(products)):
                 if j:
                     send_price_notification(products[i])

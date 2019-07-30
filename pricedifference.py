@@ -3,8 +3,8 @@ def calculate_price_difference(products: list):
         price_new = product_info["price_new"]
         price_old = sorted(product_info["price_old"])
 
-        if len(price_old) == 0:
-            yield False
+        if not product_info["price_old"]:
+            continue
 
         if len(price_old) > 1:
             # Price difference relative to all other sellers
@@ -20,7 +20,7 @@ def calculate_price_difference(products: list):
         else:
             abs_diff = rel_diff = 0
 
-        abs_mean_diff = compute_mean(product_info["price_old"]) - price_old[0]
+        abs_mean_diff = round(compute_mean(product_info["price_old"]) - price_old[0])
         rel_mean_diff = compute_percentage(price_old[0] / compute_mean(product_info["price_old"]))
 
         product_info["price difference"] = \
@@ -28,7 +28,8 @@ def calculate_price_difference(products: list):
 
         if (rel_diff > 35 and abs_diff > 90) or \
                 ((other_rel_diff > 30 and other_abs_diff > 50) and (abs_diff > 100)) or \
-                (abs_mean_diff > 100 or rel_mean_diff > 40):
+                (abs_mean_diff > 100 or rel_mean_diff > 40) and \
+                (price_old[0] < 800 or abs_diff < 800):
             yield True
         else:
             yield False

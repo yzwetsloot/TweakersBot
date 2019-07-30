@@ -26,13 +26,21 @@ def send_price_notification(product_info: dict) -> None:
                 <p>
                     Relative price difference is {product_info["price difference"][1]}%
                 </p>
-                <h4> Relative to other sellers</h4>
+                <h4>Relative to other sellers</h4>
                 <p>
                     Absolute price difference is {product_info["price difference"][2]}
                 </p>
                 <p>
                     Relative price difference is {product_info["price difference"][3]}%
                 </p>
+                <h4>Relative to mean other sellers</h4>
+                <p>
+                    Absolute price difference is {product_info["price difference"][4]}
+                </p>
+                <p>
+                    Relative price difference is {product_info["price difference"][5]}%
+                <h4>All prices</h4>
+                <p>{("{} " * len(product_info["price_old"])).format(*sorted(product_info["price_old"]))} 
 
             </body>
         </html>

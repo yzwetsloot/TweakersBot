@@ -5,7 +5,6 @@ import sys
 
 from bs4 import BeautifulSoup, SoupStrainer
 import requests
-import lxml
 
 from pricedifference import calculate_price_difference
 from notificationemail import send_error_notification, send_price_notification
@@ -20,6 +19,7 @@ def parse_float(price: str) -> float:
 
 
 def main():
+    total_start_time = time.time()
     old_links_list = []
 
     with open("config/cookieconfig.txt") as fh:
@@ -50,13 +50,14 @@ def main():
         response = requests.get(START_PAGE, headers=headers)
         soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
 
-        product_links = [link.get("href") for link in soup.find_all(class_=["thumb small", "thumb small empty"])]
+        product_links = [(link.get("href"), parse_float(link.string))
+                         for link in soup.find_all(string=re.compile("€ ([0-9\.])+,(-|[0-9]+)"))]
 
         for product_link in product_links[0:4]:
-            product_info = {"link": product_link}
+            product_info = {"link": product_link[0], "price": product_link[1]}
 
             if product_link not in old_links_list:
-                response = requests.get(product_link, headers=headers)
+                response = requests.get(product_link[0], headers=headers)
                 soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
                 product_page = soup.find(class_=["thumb normal", "thumb normal empty"])
 
@@ -76,11 +77,13 @@ def main():
                                 href=re.compile("https://tweakers.net/pricewatch/.*(aanbod).*")).get(
                                 "href")
                         except Exception as err:
-                            if error_count > 6:
+                            if error_count > 3:
                                 send_error_notification("Stopped program")
+                                print(f"Total runtime is {time.time() - total_start_time}")
                                 sys.exit()
 
-                            send_error_notification(str(err))
+                            if error_count == 1:
+                                send_error_notification(str(err))
 
                             index += 1
                             headers["Cookie"] = cookies[index % 3]
@@ -93,7 +96,7 @@ def main():
 
                     response = requests.get(other_sellers_page, headers=headers)
                     soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
-                    other_prices = soup.find_all(string=re.compile("€ ([0-9\.])+,(-|[0-9]+)"))
+                    other_prices = soup.find_all(string=re.compile("€ ([0-9\.])+,(-|[0-9]+)"), title=False)
 
                     product_info["price_old"] = [parse_float(price.string)
                                                  for price in other_prices
@@ -113,7 +116,7 @@ def main():
 
         old_links_list = product_links[0:4]
 
-        timeout = random.randrange(85, 145)
+        timeout = random.randrange(85, 250)
         print(f"Start sleeping for {timeout} seconds...")
         time.sleep(timeout)
 

@@ -51,7 +51,7 @@ def main():
         soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
 
         product_links = [(link.get("href"), parse_float(link.string))
-                         for link in soup.find_all(string=re.compile("€ ([0-9\.])+,(-|[0-9]+)"))]
+                         for link in soup.find_all('a', string=re.compile("€ ([0-9\.])+,(-|[0-9]+)"))]
 
         for product_link in product_links[0:4]:
             product_info = {"link": product_link[0], "price": product_link[1]}
@@ -77,6 +77,7 @@ def main():
                                 href=re.compile("https://tweakers.net/pricewatch/.*(aanbod).*")).get(
                                 "href")
                         except Exception as err:
+
                             if error_count > 3:
                                 send_error_notification("Stopped program")
                                 print(f"Total runtime is {time.time() - total_start_time}")

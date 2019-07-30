@@ -19,6 +19,9 @@ def send_price_notification(product_info: dict) -> None:
                 <p>
                     <a href="{product_info["link"].strip()}">{product_info["link"]}</a>
                 </p>
+                <p>
+                    Ad price is {product_info["price"]}
+                </p>
                 <h4>Relative to pricewatch price</h4>
                 <p>
                     Absolute price difference is {product_info["price difference"][0]}
@@ -67,7 +70,7 @@ def send_error_notification(err: str) -> None:
 
 
 def send_email(text: str, html: str, subject: str) -> None:
-    print("Sending mail...")
+    print("[LOG] Send email", end="\r")
 
     message = MIMEMultipart("Alternative")
     message["Subject"] = subject
@@ -83,4 +86,4 @@ def send_email(text: str, html: str, subject: str) -> None:
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email, message.as_string())
 
-    print("Mail sent")
+    print("[LOG] Email sent")

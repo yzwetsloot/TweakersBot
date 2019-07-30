@@ -1,3 +1,4 @@
+from datetime import datetime
 import time
 import re
 import random
@@ -19,7 +20,7 @@ def parse_float(price: str) -> float:
 
 
 def main():
-    total_start_time = time.time()
+    total_start_time = datetime.now()
     old_links_list = []
 
     with open("config/cookieconfig.txt") as fh:
@@ -41,7 +42,7 @@ def main():
     }
 
     while True:
-        print("Start scraping...")
+        print(f"[LOG] {datetime.now() - total_start_time} | Start scraping...")
         start_time = time.time()
         scrape_count = 0
         products = []
@@ -80,7 +81,7 @@ def main():
 
                             if error_count > 3:
                                 send_error_notification("Stopped program")
-                                print(f"Total runtime is {time.time() - total_start_time}")
+                                print(f"[LOG] Total runtime is {datetime.now() - total_start_time}")
                                 sys.exit()
 
                             if error_count == 1:
@@ -95,6 +96,8 @@ def main():
 
                         break
 
+                    time.sleep(random.randrange(1, 4))
+
                     response = requests.get(other_sellers_page, headers=headers)
                     soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
                     other_prices = soup.find_all(string=re.compile("€ ([0-9\.])+,(-|[0-9]+)"), title=False)
@@ -108,7 +111,7 @@ def main():
                     scrape_count += 1
 
         duration = time.time() - start_time
-        print(f"Scraped {scrape_count} in {duration} seconds")
+        print(f"[LOG] {datetime.now() - total_start_time} | Scraped {scrape_count} in {duration} seconds")
 
         if scrape_count > 0:
             for i, j in enumerate(calculate_price_difference(products)):
@@ -118,7 +121,7 @@ def main():
         old_links_list = product_links[0:4]
 
         timeout = random.randrange(85, 250)
-        print(f"Start sleeping for {timeout} seconds...")
+        print(f"[LOG] {datetime.now() - total_start_time} | Start sleeping for {timeout} seconds...\n")
         time.sleep(timeout)
 
 

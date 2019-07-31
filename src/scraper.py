@@ -88,6 +88,8 @@ def main() -> None:
 
                             error_count += 1
 
+                            time.sleep(random.randrange(30, 60))
+
                             continue
 
                         break

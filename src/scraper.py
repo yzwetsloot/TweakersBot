@@ -8,22 +8,18 @@ from bs4 import BeautifulSoup, SoupStrainer
 import requests
 
 from pricedifference import calculate_price_difference
-from notificationemail import send_error_notification, send_price_notification
+from emailnotification import send_error_notification, send_price_notification
 
 START_PAGE = "https://tweakers.net/aanbod/zoeken/"
 
 A_TAGS = SoupStrainer('a')
 
 
-def parse_float(price: str) -> float:
-    return float(re.sub("€|\s|-|\.", '', price).replace(",", "."))
-
-
-def main():
+def main() -> None:
     total_start_time = datetime.now()
     old_links_list = []
 
-    with open("config/cookieconfig.txt") as fh:
+    with open("../config/cookieconfig.txt") as fh:
         cookies = [line.strip() for line in fh]
 
     index = 0
@@ -69,7 +65,7 @@ def main():
                         response = requests.get(product_page_link, headers=headers)
                         soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
 
-                        pricewatch_price = soup.find(string=re.compile("^€ ([0-9\.])+,(-|[0-9]+)$"))
+                        pricewatch_price = soup.find(string=re.compile("^€ ([0-9.])+,(-|[0-9]+)$"))
 
                         product_info["price_new"] = parse_float(pricewatch_price.string) if pricewatch_price else None
 
@@ -100,7 +96,7 @@ def main():
 
                     response = requests.get(other_sellers_page, headers=headers)
                     soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
-                    other_prices = soup.find_all(string=re.compile("€ ([0-9\.])+,(-|[0-9]+)"), title=False)
+                    other_prices = soup.find_all(string=re.compile("€ ([0-9.])+,(-|[0-9]+)"), title=False)
 
                     product_info["price_old"] = [parse_float(price.string)
                                                  for price in other_prices
@@ -123,6 +119,10 @@ def main():
         timeout = random.randrange(85, 250)
         print(f"[LOG] {datetime.now() - total_start_time} | Start sleeping for {timeout} seconds...\n")
         time.sleep(timeout)
+
+
+def parse_float(price: str) -> float:
+    return float(re.sub("€|\s|-|\.", '', price).replace(",", "."))
 
 
 if __name__ == "__main__":

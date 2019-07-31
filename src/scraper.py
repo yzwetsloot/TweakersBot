@@ -89,6 +89,7 @@ def main() -> None:
                             error_count += 1
 
                             time.sleep(random.randrange(30, 60))
+                            print(f"[LOG] {datetime.now() - total_start_time} | Switch to next available cookie")
 
                             continue
 

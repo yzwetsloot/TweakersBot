@@ -4,7 +4,7 @@ import requests
 
 
 def get_cookies():
-    print("Start retrieving cookies...")
+    print("\nStart retrieving cookies...")
 
     options = Options()
     options.headless = True

@@ -43,7 +43,7 @@ def main() -> None:
         response = requests.get(START_PAGE, headers=headers, cookies=cookies)
         soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
 
-        product_links = [(link.get("href"), parse_float(link.string))
+        product_links = [(link.get("href").strip(), parse_float(link.string))
                          for link in soup.find_all('a', string=re.compile("\s*€ [0-9.]+,(-|[0-9]+)\s*"))]
 
         for product_link in product_links[0:4]:

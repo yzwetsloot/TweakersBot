@@ -23,7 +23,7 @@ def calculate_price_difference(products: list) -> iter:
 
         product_info["price difference"] = [abs_diff, rel_diff, other_abs_diff, other_rel_diff]
 
-        if ((abs_diff > 90 and (len(other_sellers) == 1 or other_abs_diff > 50)) or other_abs_diff > 50) \
+        if ((abs_diff > 90 and (len(other_sellers) == 1 or other_abs_diff > 10)) or other_abs_diff > 10) \
                 and price_ad < 900:
             yield True
         else:

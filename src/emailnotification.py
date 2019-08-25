@@ -3,7 +3,7 @@ import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-with open("../config/emailconfig.txt") as fh:
+with open("C:/Users/Youri/Documents/Projects/Python/TweakersBot/config/emailconfig.txt") as fh:
     password = fh.readline().strip()
     sender_email = fh.readline().strip()
     receiver_email = fh.readline().strip()
@@ -11,34 +11,34 @@ with open("../config/emailconfig.txt") as fh:
 PORT = 465
 
 
-def send_price_notification(product_info: dict) -> None:
-    text = str(product_info)
+def send_price_notification(product: dict) -> None:
+    text = str(product)
     html = f"""
         <html>
             <body>
                 <p>
-                    <a href="{product_info["link"].strip()}">{product_info["link"]}</a>
+                    <a href="{product["link"].strip()}">{product["link"]}</a>
                 </p>
                 <p>
-                    Ad price is {product_info["price"]}
+                    Ad price is {product["price"]}
                 </p>
                 <h4>Relative to pricewatch price</h4>
                 <p>
-                    Absolute price difference is {product_info["price difference"][0]}
+                    Absolute price difference is {product["price_difference"][0]}
                 </p>
                 <p>
-                    Relative price difference is {product_info["price difference"][1]}%
+                    Relative price difference is {product["price_difference"][1]}%
                 </p>
                 <h4>Relative to other sellers</h4>
                 <p>
-                    Absolute price difference is {product_info["price difference"][2]}
+                    Absolute price difference is {product["price_difference"][2]}
                 </p>
                 <p>
-                    Relative price difference is {product_info["price difference"][3]}%
+                    Relative price difference is {product["price_difference"][3]}%
                 </p>
                 <h4>All prices</h4>
                 <p>
-                    {("{} " * len(product_info["price_old"])).format(*sorted(product_info["price_old"]))}
+                    {("{} " * len(product["price_old"])).format(*sorted(product["price_old"]))}
                 </p>
             </body>
         </html>

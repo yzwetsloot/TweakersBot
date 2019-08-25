@@ -1,30 +1,34 @@
+PROFIT_MARGIN = 50
+
+
 def calculate_price_difference(products: list) -> iter:
-    for product_info in products:
-        price_new = product_info["price_new"]
-        price_ad = product_info["price"]
-        other_sellers = product_info["price_old"]
+    for product in products:
+        new_price = product["price_new"]
+        ad_price = product["price"]
+        other_sellers = product["price_old"]
 
         if other_sellers:
-            price_lowest = sorted(other_sellers)[0]
+            lowest_price = sorted(other_sellers)[0]
         else:
-            price_lowest = price_ad
+            lowest_price = ad_price
 
-        if price_new:
-            abs_diff = round(price_new - price_ad)
-            rel_diff = compute_percentage(price_ad / price_new)
+        if new_price:
+            abs_diff = round(new_price - ad_price)
+            rel_diff = compute_percentage(ad_price / new_price)
         else:
             abs_diff = rel_diff = 0
+            new_price = 0
 
-        if price_lowest == price_ad:
+        if lowest_price == ad_price:
             other_abs_diff = other_rel_diff = 0
         else:
-            other_abs_diff = round(price_lowest - price_ad)
-            other_rel_diff = compute_percentage(price_ad / price_lowest)
+            other_abs_diff = round(lowest_price - ad_price)
+            other_rel_diff = compute_percentage(ad_price / lowest_price)
 
-        product_info["price difference"] = [abs_diff, rel_diff, other_abs_diff, other_rel_diff]
+        product["price_difference"] = [abs_diff, rel_diff, other_abs_diff, other_rel_diff]
 
-        if ((abs_diff > 90 and (len(other_sellers) == 1 or other_abs_diff > 10)) or other_abs_diff > 10) \
-                and price_ad < 900:
+        if ad_price <= 700 and ((determine_margin(new_price, ad_price)) or
+                                (lowest_price - PROFIT_MARGIN > ad_price)):
             yield True
         else:
             yield False
@@ -32,3 +36,7 @@ def calculate_price_difference(products: list) -> iter:
 
 def compute_percentage(number: int) -> int:
     return round((1 - number) * 100)
+
+
+def determine_margin(determinant: int, value: int) -> int:
+    return determinant * 0.75 - PROFIT_MARGIN > value

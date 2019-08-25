@@ -47,7 +47,7 @@ def main() -> None:
                          for link in soup.find_all('a', string=re.compile("\s*€ [0-9.]+,(-|[0-9]+)\s*"))]
 
         for product_link in product_links[0:4]:
-            product_info = {"link": product_link[0], "price": product_link[1]}
+            product = {"link": product_link[0], "price": product_link[1]}
 
             if product_link not in old_links_list:
                 response = requests.get(product_link[0], headers=headers, cookies=cookies)
@@ -63,7 +63,7 @@ def main() -> None:
 
                         pricewatch_price = soup.find(string=re.compile("^€ [0-9.]+,(-|[0-9]+)$"))
 
-                        product_info["price_new"] = parse_float(pricewatch_price.string) if pricewatch_price else None
+                        product["price_new"] = parse_float(pricewatch_price.string) if pricewatch_price else None
 
                         try:
                             other_sellers_page = soup.find(
@@ -93,11 +93,12 @@ def main() -> None:
                     soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
                     other_prices = soup.find_all(string=re.compile("\s*€ [0-9.]+,(-|[0-9]+)\s*"), title=False)
 
-                    product_info["price_old"] = [parse_float(price.string)
-                                                 for price in other_prices
-                                                 if parse_float(price.string) != product_info["price_new"]]
+                    product["price_old"] = [parse_float(price.string)
+                                            for price in other_prices
+                                            if (parse_float(price.string) != product["price_new"]) and
+                                            (parse_float(price.string) != product["price"])]
 
-                    products.append(product_info)
+                    products.append(product)
 
                     scrape_count += 1
 

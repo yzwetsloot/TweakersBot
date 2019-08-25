@@ -9,7 +9,6 @@ def calculate_price_difference(products: list) -> iter:
 
         if other_sellers:
             lowest_price = sorted(other_sellers)[0]
-            highest_price = sorted(other_sellers, reverse=True)[0]
         else:
             lowest_price = ad_price
 
@@ -29,8 +28,7 @@ def calculate_price_difference(products: list) -> iter:
         product["price_difference"] = [abs_diff, rel_diff, other_abs_diff, other_rel_diff]
 
         if ad_price <= 700 and ((determine_margin(new_price, ad_price)) or
-                                (lowest_price - PROFIT_MARGIN > ad_price) or
-                                (determine_margin(highest_price, ad_price))):
+                                (lowest_price - PROFIT_MARGIN > ad_price)):
             yield True
         else:
             yield False

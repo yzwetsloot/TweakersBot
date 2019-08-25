@@ -95,7 +95,7 @@ def main() -> None:
 
                     product["price_old"] = [parse_float(price.string)
                                             for price in other_prices
-                                            if (parse_float(price.string) != product["price_new"]) or
+                                            if (parse_float(price.string) != product["price_new"]) and
                                             (parse_float(price.string) != product["price"])]
 
                     products.append(product)

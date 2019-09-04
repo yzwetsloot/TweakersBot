@@ -3,7 +3,7 @@ import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-with open("C:/Users/Youri/Documents/Projects/Python/TweakersBot/config/emailconfig.txt") as fh:
+with open("../config/emailconfig.txt") as fh:
     password = fh.readline().strip()
     sender_email = fh.readline().strip()
     receiver_email = fh.readline().strip()

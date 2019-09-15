@@ -1,4 +1,10 @@
-PROFIT_MARGIN = 50
+PROFIT_MARGIN = 70
+
+NEW_OLD_MARGIN = 10
+
+OUTLIER_REGION = 0.1
+
+UPPER_BOUND = 700
 
 
 def calculate_price_difference(products: list) -> iter:
@@ -8,7 +14,11 @@ def calculate_price_difference(products: list) -> iter:
         other_sellers = product["price_old"]
 
         if other_sellers:
-            lowest_price = sorted(other_sellers)[0]
+            filtered = filter(lambda x: x / ad_price > OUTLIER_REGION, other_sellers)
+            if filtered:
+                lowest_price = sorted(filtered)[0]
+            else:
+                lowest_price = ad_price
         else:
             lowest_price = ad_price
 
@@ -27,8 +37,8 @@ def calculate_price_difference(products: list) -> iter:
 
         product["price_difference"] = [abs_diff, rel_diff, other_abs_diff, other_rel_diff]
 
-        if ad_price <= 700 and ((determine_margin(new_price, ad_price) and not other_sellers) or
-                                (lowest_price - PROFIT_MARGIN > ad_price)):
+        if ad_price <= UPPER_BOUND and ((lowest_price - PROFIT_MARGIN + NEW_OLD_MARGIN > ad_price) or
+                                (determine_margin(new_price, ad_price) and not other_sellers)):
             yield True
         else:
             yield False

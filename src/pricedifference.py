@@ -1,6 +1,4 @@
-PROFIT_MARGIN = 70
-
-NEW_OLD_MARGIN = 10
+PROFIT_MARGIN = 60
 
 OUTLIER_REGION = 0.1
 
@@ -37,8 +35,8 @@ def calculate_price_difference(products: list) -> iter:
 
         product["price_difference"] = [abs_diff, rel_diff, other_abs_diff, other_rel_diff]
 
-        if ad_price <= UPPER_BOUND and ((lowest_price - PROFIT_MARGIN + NEW_OLD_MARGIN > ad_price) or
-                                (determine_margin(new_price, ad_price) and not other_sellers)):
+        if ad_price <= UPPER_BOUND and ((lowest_price - PROFIT_MARGIN > ad_price) or
+                                        (determine_margin(new_price, ad_price) and not other_sellers)):
             yield True
         else:
             yield False

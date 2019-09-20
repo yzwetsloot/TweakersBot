@@ -34,87 +34,91 @@ def main() -> None:
     }
 
     while True:
-        print(f"[LOG] {datetime.now() - total_start_time} | Start scraping...")
-        start_time = time.time()
-        scrape_count = 0
-        products = []
-        error_count = 0
+        try:
+            print(f"[LOG] {datetime.now() - total_start_time} | Start scraping...")
+            start_time = time.time()
+            scrape_count = 0
+            products = []
+            error_count = 0
 
-        response = requests.get(START_PAGE, headers=headers, cookies=cookies)
-        soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
+            response = requests.get(START_PAGE, headers=headers, cookies=cookies)
+            soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
 
-        product_links = [(link.get("href").strip(), parse_float(link.string))
-                         for link in soup.find_all('a', string=re.compile("\s*€ [0-9.]+,(-|[0-9]+)\s*"))]
+            product_links = [(link.get("href").strip(), parse_float(link.string))
+                             for link in soup.find_all('a', string=re.compile("\s*€ [0-9.]+,(-|[0-9]+)\s*"))]
 
-        for product_link in product_links[0:4]:
-            product = {"link": product_link[0], "price": product_link[1]}
+            for product_link in product_links[0:4]:
+                product = {"link": product_link[0], "price": product_link[1]}
 
-            if product_link not in old_links_list:
-                response = requests.get(product_link[0], headers=headers, cookies=cookies)
-                soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
-                product_page = soup.find(class_=["thumb normal", "thumb normal empty"])
-
-                if product_page:
-                    product_page_link = product_page.get("href")
-
-                    while True:
-                        response = requests.get(product_page_link, headers=headers, cookies=cookies)
-                        soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
-
-                        pricewatch_price = soup.find(string=re.compile("^€ [0-9.]+,(-|[0-9]+)$"))
-
-                        product["price_new"] = parse_float(pricewatch_price.string) if pricewatch_price else None
-
-                        try:
-                            other_sellers_page = soup.find(
-                                href=re.compile("https://tweakers.net/pricewatch/.*(aanbod).*")).get(
-                                "href")
-                        except AttributeError:
-
-                            if error_count > 3:
-                                send_error_notification("Stopped program")
-                                print(f"[LOG] Total runtime is {datetime.now() - total_start_time}")
-                                sys.exit()
-
-                            error_count += 1
-
-                            cookies = get_cookies()
-
-                            time.sleep(random.randrange(180, 240))
-                            print(f"[LOG] {datetime.now() - total_start_time} | Switch to next available cookie")
-
-                            continue
-
-                        break
-
-                    time.sleep(random.randrange(1, 4))
-
-                    response = requests.get(other_sellers_page, headers=headers, cookies=cookies)
+                if product_link not in old_links_list:
+                    response = requests.get(product_link[0], headers=headers, cookies=cookies)
                     soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
-                    other_prices = soup.find_all(string=re.compile("\s*€ [0-9.]+,(-|[0-9]+)\s*"), title=False)
+                    product_page = soup.find(class_=["thumb normal", "thumb normal empty"])
 
-                    product["price_old"] = [parse_float(price.string)
-                                            for price in other_prices
-                                            if (parse_float(price.string) != product["price_new"]) and
-                                            (parse_float(price.string) != product["price"])]
+                    if product_page:
+                        product_page_link = product_page.get("href")
 
-                    products.append(product)
+                        while True:
+                            response = requests.get(product_page_link, headers=headers, cookies=cookies)
+                            soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
 
-                    scrape_count += 1
+                            pricewatch_price = soup.find(string=re.compile("^€ [0-9.]+,(-|[0-9]+)$"))
 
-        duration = time.time() - start_time
-        print(f"[LOG] {datetime.now() - total_start_time} | Scraped {scrape_count} in {duration} seconds")
+                            product["price_new"] = parse_float(pricewatch_price.string) if pricewatch_price else None
 
-        if scrape_count > 0:
-            for i, j in enumerate(calculate_price_difference(products)):
-                if j:
-                    send_price_notification(products[i])
+                            try:
+                                other_sellers_page = soup.find(
+                                    href=re.compile("https://tweakers.net/pricewatch/.*(aanbod).*")).get(
+                                    "href")
+                            except AttributeError:
 
-        old_links_list = product_links[0:4]
+                                if error_count > 3:
+                                    send_error_notification("Stopped program")
+                                    print(f"[LOG] Total runtime is {datetime.now() - total_start_time}")
+                                    sys.exit()
 
-        timeout = random.randrange(85, 250)
-        print(f"[LOG] {datetime.now() - total_start_time} | Start sleeping for {timeout} seconds...\n")
-        time.sleep(timeout)
+                                error_count += 1
+
+                                cookies = get_cookies()
+
+                                time.sleep(random.randrange(180, 240))
+                                print(f"[LOG] {datetime.now() - total_start_time} | Switch to next available cookie")
+
+                                continue
+
+                            break
+
+                        time.sleep(random.randrange(1, 4))
+
+                        response = requests.get(other_sellers_page, headers=headers, cookies=cookies)
+                        soup = BeautifulSoup(response.content, "lxml", parse_only=A_TAGS)
+                        other_prices = soup.find_all(string=re.compile("\s*€ [0-9.]+,(-|[0-9]+)\s*"), title=False)
+
+                        product["price_old"] = [parse_float(price.string)
+                                                for price in other_prices
+                                                if (parse_float(price.string) != product["price_new"]) and
+                                                (parse_float(price.string) != product["price"])]
+
+                        products.append(product)
+
+                        scrape_count += 1
+
+            duration = time.time() - start_time
+            print(f"[LOG] {datetime.now() - total_start_time} | Scraped {scrape_count} in {duration} seconds")
+
+            if scrape_count > 0:
+                for i, j in enumerate(calculate_price_difference(products)):
+                    if j:
+                        send_price_notification(products[i])
+
+            old_links_list = product_links[0:4]
+
+            timeout = random.randrange(85, 250)
+            print(f"[LOG] {datetime.now() - total_start_time} | Start sleeping for {timeout} seconds...\n")
+            time.sleep(timeout)
+        except requests.exceptions.ConnectionError:
+            time.sleep(30)
+            continue
 
 
 def parse_float(price: str) -> float:

@@ -1,9 +1,10 @@
+import time
 import smtplib
 import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-with open("../config/emailconfig.txt") as fh:
+with open("C:/Users/Youri/Documents/Projects/Python/TweakersBot/config/emailconfig.txt") as fh:
     password = fh.readline().strip()
     sender_email = fh.readline().strip()
     receiver_email = fh.readline().strip()
@@ -79,6 +80,10 @@ def send_email(text: str, html: str, subject: str) -> None:
 
     with smtplib.SMTP_SSL("smtp.gmail.com", PORT, context=context) as server:
         server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, message.as_string())
+        try:
+            server.sendmail(sender_email, receiver_email, message.as_string())
+        except smtplib.SMTPDataError as err:
+            time.sleep(30)
+            send_error_notification(str(err))
 
     print("[LOG] Email sent")

@@ -3,9 +3,7 @@ from selenium.webdriver.chrome.options import Options
 import requests
 
 
-def get_cookies():
-    print("\nStart retrieving cookies...")
-
+def get_cookies() -> requests.cookies.RequestsCookieJar:
     options = Options()
     options.headless = True
     driver = webdriver.Chrome(options=options)

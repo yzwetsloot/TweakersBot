@@ -1,11 +1,17 @@
-PROFIT_MARGIN = 50
+import json
+
+with open("../config/config.json") as config:
+    parameters = json.load(config)
+
+PROFIT_MARGIN = parameters["profit_margin"]
+MAX_PRICE = parameters["max_price"]
 
 
 def calculate_price_difference(products: list) -> iter:
     for product in products:
-        new_price = product["price_new"]
-        ad_price = product["price"]
-        other_sellers = product["price_old"]
+        new_price = product["new"]
+        ad_price = product["current"]
+        other_sellers = product["sellers"]
 
         if other_sellers:
             lowest_price = sorted(other_sellers)[0]
@@ -27,11 +33,11 @@ def calculate_price_difference(products: list) -> iter:
 
         product["price_difference"] = [abs_diff, rel_diff, other_abs_diff, other_rel_diff]
 
-        if ad_price <= 700 and ((determine_margin(new_price, ad_price)) or
-                                (lowest_price - PROFIT_MARGIN > ad_price)):
-            yield True
+        if ad_price <= MAX_PRICE and ((determine_margin(new_price, ad_price)) or
+                                      (lowest_price - PROFIT_MARGIN > ad_price)):
+            yield product
         else:
-            yield False
+            yield None
 
 
 def compute_percentage(number: int) -> int:

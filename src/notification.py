@@ -1,17 +1,17 @@
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import json
+import logging
 import smtplib
 import ssl
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
-with open("C:/Users/Youri/Documents/Projects/Python/TweakersBot/config/emailconfig.txt") as fh:
-    password = fh.readline().strip()
-    sender_email = fh.readline().strip()
-    receiver_email = fh.readline().strip()
+logger = logging.getLogger(__name__)
 
-PORT = 465
+with open("../config/config.json") as config:
+    data = json.load(config)["email_config"]
 
 
-def send_price_notification(product: dict) -> None:
+def price_notification(product: dict) -> None:
     text = str(product)
     html = f"""
         <html>
@@ -46,39 +46,22 @@ def send_price_notification(product: dict) -> None:
     send_email(text, html, "Significant price difference")
 
 
-def send_error_notification(err: str) -> None:
-    text = f"Error occurred: {err}"
-    html = f"""
-        <html>
-            <body>
-                <h1>
-                    Error {err} occurred
-                </h1>
-                <p>
-                    Possible Captcha page presented.
-                    Switched to next Cookie data in argument list. 
-                </p>
-            </body>
-        </html>
-    """
-    send_email(text, html, "Program error occurred")
-
-
 def send_email(text: str, html: str, subject: str) -> None:
-    print("[LOG] Send email", end="\r")
-
     message = MIMEMultipart("Alternative")
     message["Subject"] = subject
-    message["From"] = sender_email
-    message["To"] = receiver_email
+    message["From"] = data["sender"]
+    message["To"] = data["receiver"]
 
     message.attach(MIMEText(text, "plain"))
     message.attach(MIMEText(html, "html"))
 
     context = ssl.create_default_context()
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", PORT, context=context) as server:
-        server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, message.as_string())
-
-    print("[LOG] Email sent")
+    with smtplib.SMTP_SSL("smtp.gmail.com", data["port"], context=context) as server:
+        try:
+            server.login(data["sender"], data["password"])
+            server.sendmail(data["sender"], data["receiver"], message.as_string())
+        except (smtplib.SMTPDataError, smtplib.SMTPAuthenticationError):
+            logger.error("Email error occurred")
+        except smtplib.SMTPException:
+            logger.critical("Error occurred", exc_info=1)

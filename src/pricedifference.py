@@ -5,6 +5,8 @@ with open("../config/config.json") as config:
 
 PROFIT_MARGIN = parameters["profit_margin"]
 MAX_PRICE = parameters["max_price"]
+OUTLIER_REGION = parameters["outlier_region"]
+SINGLE_PRODUCT = parameters["single_product"]
 
 
 def calculate_price_difference(products: list) -> iter:
@@ -14,7 +16,11 @@ def calculate_price_difference(products: list) -> iter:
         other_sellers = product["sellers"]
 
         if other_sellers:
-            lowest_price = sorted(other_sellers)[0]
+            filtered = list(filter(lambda x: x / ad_price > OUTLIER_REGION, other_sellers))
+            if filtered:
+                lowest_price = sorted(filtered)[0]
+            else:
+                lowest_price = ad_price
         else:
             lowest_price = ad_price
 
@@ -22,8 +28,7 @@ def calculate_price_difference(products: list) -> iter:
             abs_diff = round(new_price - ad_price)
             rel_diff = compute_percentage(ad_price / new_price)
         else:
-            abs_diff = rel_diff = 0
-            new_price = 0
+            abs_diff = rel_diff = new_price = 0
 
         if lowest_price == ad_price:
             other_abs_diff = other_rel_diff = 0
@@ -33,15 +38,14 @@ def calculate_price_difference(products: list) -> iter:
 
         product["price_difference"] = [abs_diff, rel_diff, other_abs_diff, other_rel_diff]
 
-        if ad_price <= MAX_PRICE and ((determine_margin(new_price, ad_price)) or
-                                      (lowest_price - PROFIT_MARGIN > ad_price)):
+        if ad_price <= MAX_PRICE and ((lowest_price - PROFIT_MARGIN > ad_price) or
+                                      (determine_margin(new_price, ad_price) and
+                                       (not other_sellers) and SINGLE_PRODUCT)):
             yield product
-        else:
-            yield None
 
 
 def compute_percentage(number: int) -> int:
-    return round((1 - number) * 100)
+    return round((1 - number) * 100.0)
 
 
 def determine_margin(determinant: int, value: int) -> int:

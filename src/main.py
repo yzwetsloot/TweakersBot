@@ -86,8 +86,7 @@ def main() -> None:
                     candidates.append(product)
 
         for candidate in calculate_price_difference(candidates):
-            if candidate:
-                price_notification(candidate)
+            price_notification(candidate)
 
         visited = products[:BATCH_SIZE]
 

@@ -31,6 +31,10 @@ HEADERS = parameters["headers"]
 BATCH_SIZE = parameters["batch_size"]
 
 
+def parse_float(price: str) -> float:
+    return float(re.sub("€|\\s|-|\\.", '', price).replace(",", "."))
+
+
 def main() -> None:
     visited = []
     cookies = get_cookies()
@@ -89,10 +93,6 @@ def main() -> None:
             price_notification(candidate)
 
         visited = products[:BATCH_SIZE]
-
-
-def parse_float(price: str) -> float:
-    return float(re.sub("€|\\s|-|\\.", '', price).replace(",", "."))
 
 
 if __name__ == "__main__":

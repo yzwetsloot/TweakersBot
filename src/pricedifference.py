@@ -16,7 +16,7 @@ def calculate_price_difference(products: list) -> iter:
         other_sellers = product["sellers"]
 
         if other_sellers:
-            filtered = list(filter(lambda x: x / ad_price > OUTLIER_REGION, other_sellers))
+            filtered = list(filter(lambda el: el / ad_price > OUTLIER_REGION, other_sellers))
             if filtered:
                 lowest_price = sorted(filtered)[0]
             else:

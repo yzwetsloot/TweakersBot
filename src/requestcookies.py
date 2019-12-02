@@ -1,23 +1,32 @@
+import json
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 import requests
+
+with open("../config/config.json") as config:
+    parameters = json.load(config)
+
+START_PAGE = parameters["start_page"]
+BUTTON_NAME = parameters["button_name"]
 
 
 def get_cookies() -> requests.cookies.RequestsCookieJar:
     options = Options()
     options.headless = True
-    driver = webdriver.Chrome(options=options)
 
-    driver.get("https://tweakers.net/aanbod/zoeken")
-    button = driver.find_element_by_class_name("ctaButton")
-    button.click()
+    with webdriver.Chrome(options=options) as driver:
+        driver.get(START_PAGE)
+        button = driver.find_element_by_class_name(BUTTON_NAME)
+        button.click()
 
-    cookies = driver.get_cookies()
-    jar = requests.cookies.RequestsCookieJar()
+        cookies = driver.get_cookies()
+        jar = requests.cookies.RequestsCookieJar()
 
     for cookie in cookies:
-        jar.set(cookie["name"], cookie["value"], domain=cookie["domain"], expires=1628169833, path='/',
-                secure=cookie["secure"], rest={'HttpOnly': False})
+        if "expiry" in cookie:
+            cookie["expires"] = cookie.pop("expiry")
+        del cookie["httpOnly"]
+        jar.set(**cookie, rest={'HttpOnly': False})
 
-    driver.quit()
     return jar

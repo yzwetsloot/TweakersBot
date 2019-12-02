@@ -27,8 +27,8 @@ with open("../config/config.json") as config:
     parameters = json.load(config)
 
 START_PAGE = parameters["start_page"]
-HEADERS = parameters["headers"]
 BATCH_SIZE = parameters["batch_size"]
+HEADERS = parameters["headers"]
 
 
 def parse_float(price: str) -> float:
@@ -48,7 +48,7 @@ def main() -> None:
             pass
         soup = BeautifulSoup(response.content, "lxml", parse_only=link_tags)
 
-        products = [{"url": product["href"].strip(), "current": parse_float(product.string)}
+        products = [{"url": product["href"].strip(), "current_price": parse_float(product.string)}
                     for product in soup.find_all('a', string=price_pattern)]
 
         for product in products[:BATCH_SIZE]:
@@ -62,13 +62,13 @@ def main() -> None:
 
                 if pricewatch_page:
                     try:
-                        response = requests.get(pricewatch_page["url"], headers=HEADERS, cookies=cookies)
+                        response = requests.get(pricewatch_page["href"], headers=HEADERS, cookies=cookies)
                     except requests.RequestException:
                         pass
                     soup = BeautifulSoup(response.content, "lxml", parse_only=link_tags)
 
-                    pricewatch_price = soup.find(string=pricewatch_pattern).string
-                    product["new"] = parse_float(pricewatch_price) if pricewatch_price else None
+                    pricewatch_price = soup.find(string=pricewatch_pattern)
+                    product["new_price"] = parse_float(pricewatch_price.string) if pricewatch_price else None
 
                     while True:
                         recaptcha = soup.find(recaptcha_pattern)
@@ -84,9 +84,10 @@ def main() -> None:
                     except requests.RequestException:
                         pass
                     soup = BeautifulSoup(response.content, "lxml", parse_only=link_tags)
-                    product["sellers"] = list(filter(lambda el: el != product["new"] and el != product["current"],
-                                                     map(lambda el: parse_float(el.string),
-                                                         soup.find_all(string=price_pattern))))
+                    product["other_prices"] = [parse_float(el.string) for el in
+                                               soup.find_all(string=price_pattern, parse_only=link_tags)]
+                    product["other_prices"].remove(product["current_price"])
+
                     candidates.append(product)
 
         for candidate in calculate_price_difference(candidates):

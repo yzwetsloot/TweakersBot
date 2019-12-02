@@ -5,42 +5,42 @@ with open("../config/config.json") as config:
 
 PROFIT_MARGIN = parameters["profit_margin"]
 MAX_PRICE = parameters["max_price"]
-OUTLIER_REGION = parameters["outlier_region"]
+OUTLIER_TRESHOLD = parameters["outlier_treshold"]
 SINGLE_PRODUCT = parameters["single_product"]
 
 
 def calculate_price_difference(products: list) -> iter:
     for product in products:
-        new_price = product["new"]
-        ad_price = product["current"]
-        other_sellers = product["sellers"]
+        new_price = product["new_price"]
+        current_price = product["current_price"]
+        other_sellers = product["other_prices"]
 
         if other_sellers:
-            filtered = list(filter(lambda el: el / ad_price > OUTLIER_REGION, other_sellers))
+            filtered = list(filter(lambda el: el / current_price > OUTLIER_TRESHOLD, other_sellers))
             if filtered:
                 lowest_price = sorted(filtered)[0]
             else:
-                lowest_price = ad_price
+                lowest_price = current_price
         else:
-            lowest_price = ad_price
+            lowest_price = current_price
 
         if new_price:
-            abs_diff = round(new_price - ad_price)
-            rel_diff = compute_percentage(ad_price / new_price)
+            abs_diff = round(new_price - current_price)
+            rel_diff = compute_percentage(current_price / new_price)
         else:
             abs_diff = rel_diff = new_price = 0
 
-        if lowest_price == ad_price:
+        if lowest_price == current_price:
             other_abs_diff = other_rel_diff = 0
         else:
-            other_abs_diff = round(lowest_price - ad_price)
-            other_rel_diff = compute_percentage(ad_price / lowest_price)
+            other_abs_diff = round(lowest_price - current_price)
+            other_rel_diff = compute_percentage(current_price / lowest_price)
 
         product["price_difference"] = [abs_diff, rel_diff, other_abs_diff, other_rel_diff]
 
-        if ad_price <= MAX_PRICE and ((lowest_price - PROFIT_MARGIN > ad_price) or
-                                      (determine_margin(new_price, ad_price) and
-                                       (not other_sellers) and SINGLE_PRODUCT)):
+        if current_price <= MAX_PRICE and ((lowest_price - PROFIT_MARGIN > current_price) or
+                                           (determine_margin(new_price, current_price) and
+                                            (not other_sellers) and SINGLE_PRODUCT)):
             yield product
 
 

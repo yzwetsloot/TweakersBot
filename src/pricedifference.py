@@ -1,3 +1,4 @@
+"""Contains method for determining whether product is a candidate"""
 import json
 
 with open("../config/config.json") as config:
@@ -36,7 +37,10 @@ def calculate_price_difference(products: list) -> iter:
             other_abs_diff = round(lowest_price - current_price)
             other_rel_diff = compute_percentage(current_price / lowest_price)
 
-        product["price_difference"] = [abs_diff, rel_diff, other_abs_diff, other_rel_diff]
+        product["absolute_new"] = abs_diff
+        product["relative_new"] = rel_diff
+        product["absolute_others"] = other_abs_diff
+        product["relative_others"] = other_rel_diff
 
         if current_price <= MAX_PRICE and ((lowest_price - PROFIT_MARGIN > current_price) or
                                            (determine_margin(new_price, current_price) and

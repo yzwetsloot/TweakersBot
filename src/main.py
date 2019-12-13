@@ -10,8 +10,7 @@ import yaml
 
 from notification import price_notification
 from pricedifference import calculate_price_difference
-from requestcookies import get_cookies
-from proxy import filter_proxies, retrieve_proxies
+from identity import get_identity
 
 with open("../config/log.yaml") as config:
     parameters = yaml.safe_load(config.read())
@@ -34,76 +33,66 @@ BATCH_SIZE = parameters["batch_size"]
 TIMEOUT = parameters["timeout"]
 CYCLE_RANGE = parameters["cycle_range"]
 PRODUCT_RANGE = parameters["product_range"]
-HEADERS = parameters["headers"]
+
+proxy, headers, cookies = None, None, None
 
 
 def parse_float(price: str) -> float:
     return float(re.sub("€|\\s|-|\\.", '', price).replace(",", "."))
 
 
-def main() -> None:
-    endpoints = open("../resources/endpoints.txt").read().splitlines()
-    proxies = filter_proxies(retrieve_proxies(endpoints), START_PAGE, 2.5, 2.0)
+def change_identity() -> tuple:
+    global proxy, headers, cookies
+    while True:
+        proxies = open("../resources/proxies.txt").read().splitlines()
+        proxy = proxies[random.randrange(0, len(proxies) - 1)]
 
-    proxy = proxies[random.randrange(0, len(proxies) - 1)]
-    logger.info(f"Retrieved {len(proxies)} proxies; using proxy {proxy}")
+        try:
+            headers, cookies = get_identity(proxy)
+        except Exception as err:
+            print(err)
+            continue
+        return proxy, headers, cookies
+
+
+def fetch_page(url: str, parse_only: SoupStrainer = None) -> BeautifulSoup:
+    global proxy, headers, cookies
+    while True:
+        try:
+            response = requests.get(url, headers=headers, cookies=cookies, proxies={"https": proxy})
+            break
+        except requests.RequestException:
+            proxy, headers, cookies = change_identity()
+            logger.error(f"Connection error occurred; switch to {proxy}")
+            time.sleep(TIMEOUT)
+    return BeautifulSoup(response.content, "lxml", parse_only=parse_only)
+
+
+def main() -> None:
+    global proxy, headers, cookies
+    proxy, headers, cookies = change_identity()
 
     visited = []
-    cookies = get_cookies(proxy)
 
     while True:
         candidates = []
-
-        while True:
-            try:
-                response = requests.get(START_PAGE, headers=HEADERS, cookies=cookies, proxies={"https": proxy})
-                break
-            except requests.RequestException:
-                proxies.remove(proxy)
-                proxy = proxies[random.randrange(0, len(proxies) - 1)]
-                logger.error(f"Connection error occurred; switch to {proxy}")
-                time.sleep(TIMEOUT)
-
-        soup = BeautifulSoup(response.content, "lxml", parse_only=link_tags)
+        soup = fetch_page(START_PAGE, link_tags)
 
         products = [{"url": product["href"].strip(), "current_price": parse_float(product.string)}
                     for product in soup.find_all('a', string=price_pattern)]
 
         for product in products[:BATCH_SIZE]:
             if product["url"] not in visited:
-                while True:
-                    try:
-                        response = requests.get(product["url"], headers=HEADERS, cookies=cookies, proxies={"https": proxy})
-                        break
-                    except requests.RequestException:
-                        proxies.remove(proxy)
-                        proxy = proxies[random.randrange(0, len(proxies) - 1)]
-                        logger.error(f"Connection error occurred; switch to {proxy}")
-                        time.sleep(TIMEOUT)
-
-                soup = BeautifulSoup(response.content, "lxml", parse_only=link_tags)
+                soup = fetch_page(product["url"], link_tags)
                 pricewatch_page = soup.find(class_=["thumb normal", "thumb normal empty"])
 
                 if pricewatch_page:
-                    count = 0
+                    soup = fetch_page(pricewatch_page["href"])
                     while True:
-                        try:
-                            response = requests.get(pricewatch_page["href"], headers=HEADERS, cookies=cookies, proxies={"https": proxy})
-                        except requests.RequestException:
-                            proxies.remove(proxy)
-                            proxy = proxies[random.randrange(0, len(proxies) - 1)]
-                            logger.error(f"Connection error occurred; switch to {proxy}")
-                            time.sleep(TIMEOUT)
-                            continue
-
-                        soup = BeautifulSoup(response.content, "lxml")
-
                         if soup.find(string=recaptcha_pattern):
                             logger.info(f"ReCaptcha presented; retrieve cookies")
-                            proxy = proxies[random.randrange(0, len(proxies) - 1)]
-                            cookies = get_cookies(proxy)
-                            # time.sleep(random.randrange(CYCLE_RANGE[0] * 2 ** count, CYCLE_RANGE[1] * 2 ** count))
-                            count += 1
+                            proxy, headers, cookies = change_identity()
+                            time.sleep(TIMEOUT)
                             continue
                         break
 
@@ -113,28 +102,11 @@ def main() -> None:
                     sellers_page = soup.find(href=sellers_pattern)
 
                     if sellers_page:
-                        count = 0
+                        soup = fetch_page(sellers_page["href"])
                         while True:
-                            try:
-                                response = requests.get(sellers_page["href"], headers=HEADERS, cookies=cookies, proxies={"https": proxy})
-                            except requests.RequestException:
-                                proxies.remove(proxy)
-                                proxy = proxies[random.randrange(0, len(proxies) - 1)]
-                                logger.error(f"Connection error occurred; switch to {proxy}")
-                                time.sleep(TIMEOUT)
-                                continue
-
-                            soup = BeautifulSoup(response.content, "lxml")
-
                             if soup.find(string=recaptcha_pattern):
-                                # TODO resolve cookie-issue
-                                # Try adjusting user agent
-                                # Increase timeout on retry
-                                proxy = proxies[random.randrange(0, len(proxies) - 1)]
-                                cookies = get_cookies(proxy)
                                 logger.info(f"ReCaptcha presented; retrieve cookies")
-                                # time.sleep(random.randrange(CYCLE_RANGE[0] * 2 ** count, CYCLE_RANGE[1] * 2 ** count))
-                                count += 1
+                                proxy, headers, cookies = change_identity()
                                 continue
                             break
 
@@ -145,7 +117,7 @@ def main() -> None:
                             product["other_prices"].remove(product["current_price"])
                         except ValueError:
                             with open("test.txt", 'w') as fh:
-                                fh.write(response.text)
+                                fh.write(str(soup))
                         if product["new_price"]:
                             product["other_prices"].remove(product["new_price"])
 

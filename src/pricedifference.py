@@ -8,6 +8,7 @@ PROFIT_MARGIN = parameters["profit_margin"]
 MAX_PRICE = parameters["max_price"]
 OUTLIER_TRESHOLD = parameters["outlier_treshold"]
 SINGLE_PRODUCT = parameters["single_product"]
+PROFIT_TRESHOLD = parameters["profit_treshold"]
 
 
 def calculate_price_difference(products: list) -> iter:
@@ -53,4 +54,4 @@ def compute_percentage(number: int) -> int:
 
 
 def determine_margin(determinant: int, value: int) -> int:
-    return determinant * 0.75 - PROFIT_MARGIN > value
+    return determinant * PROFIT_TRESHOLD - PROFIT_MARGIN > value

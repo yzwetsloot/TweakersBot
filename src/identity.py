@@ -10,6 +10,7 @@ with open("../config/config.json") as config:
 START_PAGE = parameters["start_page"]
 BUTTON_NAME = parameters["button_name"]
 TIMEOUT = parameters["timeout"]
+USER_AGENT = parameters["user_agent"]
 
 
 def get_identity(proxy: str) -> tuple:
@@ -25,6 +26,7 @@ def get_identity(proxy: str) -> tuple:
         button.click()
 
         headers = driver.requests[1].headers
+        headers["User-Agent"] = USER_AGENT
         cookies = driver.get_cookies()
         jar = requests.cookies.RequestsCookieJar()
 

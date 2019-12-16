@@ -22,7 +22,7 @@ link_tags = SoupStrainer('a')
 
 price_pattern = re.compile("\\s*€ [0-9.]+,(-|[0-9]+)\\s*")
 pricewatch_pattern = re.compile("^€ [0-9.]+,(-|[0-9]+)$")
-sellers_pattern = re.compile(".*pricewatch/.*/aanbod/\s*")
+sellers_pattern = re.compile(".*pricewatch/.*/aanbod/\\s*")
 recaptcha_pattern = re.compile(".*Captcha.*")
 
 with open("../config/config.json") as config:
@@ -113,16 +113,12 @@ def main() -> None:
                         product["other_prices"] = [parse_float(el.string) for el in
                                                    soup.find_all('a', string=price_pattern)]
 
-                        try:
-                            product["other_prices"].remove(product["current_price"])
-                        except ValueError:
-                            with open("test.txt", 'w') as fh:
-                                fh.write(str(soup))
+                        product["other_prices"].remove(product["current_price"])
+
                         if product["new_price"]:
                             product["other_prices"].remove(product["new_price"])
 
                         candidates.append(product)
-                        print(product)
                         time.sleep(random.randrange(PRODUCT_RANGE[0], PRODUCT_RANGE[1]))
 
         for candidate in calculate_price_difference(candidates):

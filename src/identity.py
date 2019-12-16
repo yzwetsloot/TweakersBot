@@ -8,15 +8,14 @@ with open("../config/config.json") as config:
     parameters = json.load(config)
 
 START_PAGE = parameters["start_page"]
-BUTTON_NAME = parameters["button_name"]
 TIMEOUT = parameters["timeout"]
+BUTTON_NAME = parameters["button_name"]
 USER_AGENT = parameters["user_agent"]
 
 
-def get_identity(proxy: str) -> tuple:
+def get_identity() -> tuple:
     options = webdriver.ChromeOptions()
     options.headless = True
-    options.add_argument("--proxy-server=%s" % proxy)
 
     with webdriver.Chrome(options=options) as driver:
         driver.set_page_load_timeout(TIMEOUT)

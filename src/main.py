@@ -23,7 +23,11 @@ CYCLE_RANGE = parameters["cycle_range"]
 
 def main() -> None:
     while True:
-        products = get_products()
+        try:
+            products = get_products()
+        except TimeoutError:
+            logger.error("Page could not be loaded")
+            continue
 
         for product in calculate_price_difference(products):
             price_notification(**product)

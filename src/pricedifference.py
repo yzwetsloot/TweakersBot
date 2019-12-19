@@ -4,18 +4,29 @@ import json
 with open("../config/config.json") as config:
     parameters = json.load(config)
 
+PROFIT_TRESHOLD = parameters["profit_treshold"]
 PROFIT_MARGIN = parameters["profit_margin"]
 MAX_PRICE = parameters["max_price"]
 OUTLIER_TRESHOLD = parameters["outlier_treshold"]
 SINGLE_PRODUCT = parameters["single_product"]
-PROFIT_TRESHOLD = parameters["profit_treshold"]
+
+
+def compute_percentage(number: int) -> int:
+    return round((1 - number) * 100.0)
+
+
+def determine_margin(determinant: int, value: int) -> int:
+    return determinant * PROFIT_TRESHOLD - PROFIT_MARGIN > value
 
 
 def calculate_price_difference(products: list) -> iter:
     for product in products:
-        new_price = product["new_price"]
         current_price = product["current_price"]
+        new_price = product["new_price"]
         other_sellers = product["other_prices"]
+
+        if not current_price:
+            continue
 
         if other_sellers:
             filtered = list(filter(lambda el: el / current_price > OUTLIER_TRESHOLD, other_sellers))
@@ -47,11 +58,3 @@ def calculate_price_difference(products: list) -> iter:
                                            (determine_margin(new_price, current_price) and
                                             (not other_sellers) and SINGLE_PRODUCT)):
             yield product
-
-
-def compute_percentage(number: int) -> int:
-    return round((1 - number) * 100.0)
-
-
-def determine_margin(determinant: int, value: int) -> int:
-    return determinant * PROFIT_TRESHOLD - PROFIT_MARGIN > value

@@ -6,7 +6,7 @@ import time
 import yaml
 
 from notification import price_notification
-from pricedifference import calculate_price_difference
+from price import candidate
 from product import get_products
 
 with open("../config/log.yaml") as config:
@@ -29,8 +29,11 @@ def main() -> None:
             logger.error("Page could not be loaded")
             continue
 
-        for product in calculate_price_difference(products):
-            price_notification(**product)
+        logger.info(f"Retrieved {len(products)} products")
+
+        for product in products:
+            if candidate(product):
+                price_notification(**product)
 
         duration = random.randrange(CYCLE_RANGE[0], CYCLE_RANGE[1])
         logger.info(f"Cycle done; sleep for {duration} seconds")

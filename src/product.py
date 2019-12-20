@@ -1,10 +1,11 @@
-"""Contains functions for retrieving products"""
+"""Contains functions for retrieving products from the Tweakers.net marketplace"""
 from itertools import count
 import json
 import re
 
 from seleniumwire import webdriver
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.webdriver.common.by import By
 
 with open("../config/config.json") as config:
     parameters = json.load(config)
@@ -13,8 +14,8 @@ with open("../config/config.json") as config:
 START_PAGE = parameters["start_page"]
 BATCH_SIZE = parameters["batch_size"]
 CYCLE_RANGE = parameters["cycle_range"]
-USER_AGENT = parameters["user_agent"]
 TIMEOUT = parameters["timeout"]
+DEBUG = parameters["debug"]
 
 BUTTON_PATH = xpaths["button_path"]
 PRODUCT_PATH = xpaths["product_path"]
@@ -34,7 +35,7 @@ def parse_float(price: str) -> float:
     return float(re.sub("€|\\s|-|\\.", '', price).replace(",", "."))
 
 
-def check_element_exists(xpath: str, driver: webdriver) -> bool:
+def element_exists(xpath: str, driver: webdriver) -> bool:
     try:
         driver.find_element_by_xpath(xpath)
     except NoSuchElementException:
@@ -57,49 +58,61 @@ def get_products() -> list:
             button = driver.find_element_by_xpath(BUTTON_PATH)
             button.click()
 
-            product_links, products = [], []
+            links, products = [], []
 
             for index in range(BATCH_SIZE):
                 product_link = driver.find_element_by_xpath(PRODUCT_PATH.format(index + 1))
-                product_links.append(product_link)
+                links.append(product_link.get_attribute("href"))
 
-            for product_link in product_links:
+            for link in links:
+                if link in visited:
+                    continue
+                try:
+                    product_link = driver.find_element(By.CSS_SELECTOR, "a[href='{}']".format(link))
+                except NoSuchElementException:
+                    continue
                 product_link.click()
-                product = {"url": driver.current_url, "current_price": None, "new_price": None, "other_prices": []}
+                product = {"url": driver.current_url, "current_price": None, "new_price": 0.0, "other_prices": []}
 
-                if check_element_exists(CURRENT_PRICE_PATH, driver):
+                if element_exists(CURRENT_PRICE_PATH, driver):
                     current_price = driver.find_element_by_xpath(CURRENT_PRICE_PATH).text
                     if re.match(price_pattern, current_price):
                         product["current_price"] = parse_float(current_price)
+                    else:
+                        continue
 
-                if check_element_exists(PRICEWATCH_PATH, driver):
+                if element_exists(PRICEWATCH_PRICE_PATH, driver):
+                    new_price = driver.find_element_by_xpath(PRICEWATCH_PRICE_PATH).text[5:]
+                    if re.match(price_pattern, new_price):
+                        product["new_price"] = parse_float(new_price)
+
+                if element_exists(PRICEWATCH_PATH, driver):
                     pricewatch_link = driver.find_element_by_xpath(PRICEWATCH_PATH)
                     pricewatch_link.click()
 
-                    if check_element_exists(PRICEWATCH_PRICE_PATH, driver):
-                        new_price = driver.find_element_by_xpath(PRICEWATCH_PRICE_PATH).text
-                        if re.match(price_pattern, new_price):
-                            product["new_price"] = parse_float(new_price)
+                    if element_exists(OTHER_SELLERS_PATH, driver):
+                        other_sellers_link = driver.find_element_by_xpath(OTHER_SELLERS_PATH)
+                        other_sellers_link.click()
 
-                    other_sellers_link = driver.find_element_by_xpath(OTHER_SELLERS_PATH)
-                    other_sellers_link.click()
+                        for counter in count(start=1):
+                            seller_price_link = OTHER_SELLERS_PRICE_PATH.format(counter)
+                            if element_exists(seller_price_link, driver):
+                                seller_price = driver.find_element_by_xpath(seller_price_link).text
+                                if re.match(price_pattern, seller_price):
+                                    product["other_prices"].append(parse_float(seller_price))
+                            else:
+                                break
 
-                    for counter in count(start=1):
-                        seller_price_link = OTHER_SELLERS_PRICE_PATH.format(counter)
-                        if check_element_exists(seller_price_link, driver):
-                            seller_price = driver.find_element_by_xpath(seller_price_link).text
-                            if re.match(price_pattern, seller_price):
-                                product["other_prices"].append(parse_float(seller_price))
-                        else:
-                            break
-
-                    driver.back()
+                        driver.back()
                     driver.back()
                 driver.back()
 
-                products.append(product)
+                if DEBUG:
+                    print(product)
 
-        visited = product_links
-        return products
+                products.append(product)
     except TimeoutException:
         raise TimeoutError
+
+    visited = links
+    return products

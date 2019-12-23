@@ -5,3 +5,4 @@
 /venv
 app.log
 /resources
+/debug

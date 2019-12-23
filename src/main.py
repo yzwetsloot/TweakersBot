@@ -18,13 +18,16 @@ logger = logging.getLogger(__name__)
 with open("../config/config.json") as config:
     parameters = json.load(config)
 
+with open("../resources/proxies.txt") as proxies:
+    proxies = proxies.read().splitlines()
+
 CYCLE_RANGE = parameters["cycle_range"]
 
 
 def main() -> None:
     while True:
         try:
-            products = get_products()
+            products = get_products(proxies[random.randrange(0, len(proxies) - 1)])
         except TimeoutError:
             logger.error("Page could not be loaded")
             continue
